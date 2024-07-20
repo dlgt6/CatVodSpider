@@ -1,11 +1,12 @@
 name: build
 
 on:
-  push:
-    branches: ['main']
-  pull_request:
-    branches: ['main']
+ # push:
+ #   branches: ['main']
+ # pull_request:
+ #   branches: ['main']
 # 触发条件：当有代码推送到main分支或者有针对main分支的合并请求时，这个工作流会被触发。
+   workflow_dispatch: # 手动触发
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
