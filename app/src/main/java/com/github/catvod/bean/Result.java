@@ -50,6 +50,14 @@ public class Result {
     private Integer limit;
     @SerializedName("total")
     private Integer total;
+    @SerializedName("code")
+    private Integer code;
+    @SerializedName("drm")
+    private Object drm;
+    @SerializedName("ext")
+    private Map<String, String> ext;
+    @SerializedName("extra")
+    private Map<String, Object> extra;
 
     public static Result objectFrom(String str) {
         return new Gson().fromJson(str, Result.class);
@@ -95,11 +103,11 @@ public class Result {
     }
 
     public static String error(String msg) {
-        return Result.get().vod(Collections.emptyList()).msg(msg).string();
+        return Result.get().vod(Collections.emptyList()).msg(msg).code(500).string();
     }
 
     public static String notify(String msg) {
-        return Result.get().msg(msg).string();
+        return Result.get().msg(msg).code(200).string();
     }
 
     public static Result get() {
@@ -223,6 +231,61 @@ public class Result {
         return this;
     }
 
+    public Result mp4() {
+        this.format = "video/mp4";
+        return this;
+    }
+
+    public Result mkv() {
+        this.format = "video/x-matroska";
+        return this;
+    }
+
+    public Result webm() {
+        this.format = "video/webm";
+        return this;
+    }
+
+    public Result flv() {
+        this.format = "video/x-flv";
+        return this;
+    }
+
+    public Result hls() {
+        this.format = "application/vnd.apple.mpegurl";
+        return this;
+    }
+
+    public Result mp3() {
+        this.format = "audio/mpeg";
+        return this;
+    }
+
+    public Result wav() {
+        this.format = "audio/wav";
+        return this;
+    }
+
+    public Result ogg() {
+        this.format = "audio/ogg";
+        return this;
+    }
+
+    public Result aac() {
+        this.format = "audio/aac";
+        return this;
+    }
+
+    public Result flac() {
+        this.format = "audio/flac";
+        return this;
+    }
+
+    public Result m4a() {
+        this.format = "audio/mp4";
+        return this;
+    }
+
     public Result page() {
         return page(1, 1, 0, 1);
     }
@@ -235,8 +298,144 @@ public class Result {
         return this;
     }
 
+    public Result code(int code) {
+        this.code = code;
+        return this;
+    }
+
+    public Result drm(Object drm) {
+        this.drm = drm;
+        return this;
+    }
+
+    public Result ext(Map<String, String> ext) {
+        this.ext = ext;
+        return this;
+    }
+
+    public Result extra(Map<String, Object> extra) {
+        this.extra = extra;
+        return this;
+    }
+
     public List<Vod> getList() {
         return list == null ? Collections.emptyList() : list;
+    }
+
+    public List<Class> getClasses() {
+        return classes == null ? Collections.emptyList() : classes;
+    }
+
+    public LinkedHashMap<String, List<Filter>> getFilters() {
+        return filters == null ? new LinkedHashMap<>() : filters;
+    }
+
+    public String getHeader() {
+        return header == null ? "" : header;
+    }
+
+    public String getFormat() {
+        return format == null ? "" : format;
+    }
+
+    public List<Danmaku> getDanmaku() {
+        return danmaku == null ? Collections.emptyList() : danmaku;
+    }
+
+    public String getClick() {
+        return click == null ? "" : click;
+    }
+
+    public String getMsg() {
+        return msg == null ? "" : msg;
+    }
+
+    public Object getUrl() {
+        return url;
+    }
+
+    public List<Sub> getSubs() {
+        return subs == null ? Collections.emptyList() : subs;
+    }
+
+    public int getParse() {
+        return parse;
+    }
+
+    public int getJx() {
+        return jx;
+    }
+
+    public Integer getPage() {
+        return page == null ? 1 : page;
+    }
+
+    public Integer getPageCount() {
+        return pagecount == null ? 1 : pagecount;
+    }
+
+    public Integer getLimit() {
+        return limit == null ? 0 : limit;
+    }
+
+    public Integer getTotal() {
+        return total == null ? 0 : total;
+    }
+
+    public Integer getCode() {
+        return code == null ? 0 : code;
+    }
+
+    public Object getDrm() {
+        return drm;
+    }
+
+    public Map<String, String> getExt() {
+        return ext == null ? new HashMap<>() : ext;
+    }
+
+    public Map<String, Object> getExtra() {
+        return extra == null ? new HashMap<>() : extra;
+    }
+
+    public boolean hasMsg() {
+        return !getMsg().isEmpty();
+    }
+
+    public boolean hasUrl() {
+        return getUrl() != null && !getUrl().toString().isEmpty();
+    }
+
+    public boolean hasSubs() {
+        return !getSubs().isEmpty();
+    }
+
+    public boolean hasDanmaku() {
+        return !getDanmaku().isEmpty();
+    }
+
+    public boolean hasFilters() {
+        return !getFilters().isEmpty();
+    }
+
+    public boolean hasHeader() {
+        return !getHeader().isEmpty();
+    }
+
+    public boolean hasExt() {
+        return !getExt().isEmpty();
+    }
+
+    public boolean hasExtra() {
+        return !getExtra().isEmpty();
+    }
+
+    public boolean isSuccess() {
+        return getCode() == 0 || getCode() == 200;
+    }
+
+    public boolean isError() {
+        return getCode() != 0 && getCode() != 200;
     }
 
     public String string() {
