@@ -54,7 +54,7 @@ public class Kanqiu extends Spider {
     }
 
     @Override
-    public String categoryContent(String tid, String pg, boolean filter, HashMap<String, String> extend) {
+    public String categoryContent(String tid, String pg, boolean filter, HashMap<String, String> extend) throws Exception {
         String cateId = extend.get("cateId") == null ? tid : extend.get("cateId");
         String urlPath = cateId == null || cateId.isEmpty() ? "" : String.format("/match/%s/live", cateId);
         Elements lis = Jsoup.parse(OkHttp.string(siteUrl + urlPath, getHeader())).select(".list-group-item");
@@ -96,7 +96,7 @@ public class Kanqiu extends Spider {
     }
 
     @Override
-    public String playerContent(String flag, String id, List<String> vipFlags) {
+    public String playerContent(String flag, String id, List<String> vipFlags) throws Exception {
         return Result.get().url(id.replace("***", "#")).parse().header(getHeader()).string();
     }
 }
