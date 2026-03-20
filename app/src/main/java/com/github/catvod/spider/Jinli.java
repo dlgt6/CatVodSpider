@@ -146,10 +146,7 @@ public class Jinli extends Spider {
             
             return Result.get()
                 .url(playUrl)
-                .header("User-Agent", headerx.get("User-Agent"))
-                .header("Referer", headerx.get("Referer"))
-                .header("X-Requested-With", headerx.get("X-Requested-With"))
-                .header("Origin", headerx.get("Origin"))
+                .header(headerx)
                 .parse(1)
                 .string();
         } catch (Exception e) {
