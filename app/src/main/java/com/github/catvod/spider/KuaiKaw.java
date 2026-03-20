@@ -187,17 +187,18 @@ public class KuaiKaw extends Spider {
             detailUrl = siteUrl + (detailUrl.startsWith("/") ? "" : "/") + detailUrl;
         }
         
-        Document doc = Jsoup.parse(getHtml(detailUrl));
+        String html = getHtml(detailUrl);
+        Document doc = Jsoup.parse(html);
         
         Vod vod = new Vod();
         vod.setVodId(ids.get(0));
         
-        Element titleEl = doc.selectFirst(".title, .video-title, h1, .drama-title");
+        Element titleEl = doc.selectFirst("h1, .title, .video-title, .drama-title, .name, .drama-name, [class*=title]");
         if (titleEl != null) {
             vod.setVodName(titleEl.text());
         }
         
-        Element picEl = doc.selectFirst(".poster img, .video-pic img, img.cover, img");
+        Element picEl = doc.selectFirst("img.poster, img.cover, .poster img, .cover img, .thumb img, img[class*=poster], img[class*=cover]");
         if (picEl != null) {
             String vodPic = picEl.attr("data-src");
             if (vodPic.isEmpty()) vodPic = picEl.attr("data-original");
@@ -208,7 +209,7 @@ public class KuaiKaw extends Spider {
             vod.setVodPic(vodPic);
         }
         
-        Element descEl = doc.selectFirst(".desc, .content, .intro, .description");
+        Element descEl = doc.selectFirst(".desc, .content, .intro, .description, .synopsis, [class*=desc], [class*=intro]");
         if (descEl != null) {
             vod.setVodContent(descEl.text());
         }
@@ -216,21 +217,35 @@ public class KuaiKaw extends Spider {
         StringBuilder playFrom = new StringBuilder();
         StringBuilder playUrl = new StringBuilder();
         
-        Elements episodes = doc.select(".episode-list a, .play-list a, .episodes a, a[href*=/play/]");
+        Elements episodes = doc.select("a[href*=/play/], .episode-list a, .play-list a, .episodes a, .episode a, [class*=episode] a, [class*=play] a");
+        
+        if (episodes.isEmpty()) {
+            episodes = doc.select("a[href*=/video/], a[href*=/watch/]");
+        }
         
         if (!episodes.isEmpty()) {
             playFrom.append("默认");
             for (int i = 0; i < episodes.size(); i++) {
                 Element ep = episodes.get(i);
-                String epName = ep.text();
+                String epName = ep.text().trim();
                 if (epName == null || epName.isEmpty()) {
                     epName = "第" + (i + 1) + "集";
                 }
                 String epUrl = ep.attr("href");
-                playUrl.append(epName).append("$").append(epUrl);
-                if (i < episodes.size() - 1) {
-                    playUrl.append("#");
+                if (!epUrl.isEmpty()) {
+                    playUrl.append(epName).append("$").append(epUrl);
+                    if (i < episodes.size() - 1) {
+                        playUrl.append("#");
+                    }
                 }
+            }
+        }
+        
+        if (playUrl.length() == 0) {
+            String videoUrl = matchVideoUrl(html);
+            if (!videoUrl.isEmpty()) {
+                playFrom.append("默认");
+                playUrl.append("播放$").append(videoUrl);
             }
         }
         
