@@ -16,6 +16,10 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * 锦鲤短剧 Java 版本
+ * 已根据 Init.java 和 OkHttp.java 源码完成最终适配
+ */
 public class Jinli extends Spider {
 
     private String apiHost = "https://api.jinlidj.com";
@@ -23,6 +27,7 @@ public class Jinli extends Spider {
 
     @Override
     public void init(Context context, String ext) throws Exception {
+        // 直接向上抛出异常，解决 "unreported exception Exception" 编译错误
         super.init(context, ext);
         headerx = new HashMap<>();
         headerx.put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36");
@@ -39,6 +44,7 @@ public class Jinli extends Spider {
         classes.add(new Class("5", "🌠伦理现实"));
         classes.add(new Class("6", "🌠时空穿越"));
         classes.add(new Class("7", "🌠权谋身份"));
+        // 显式转型 JSONObject 消除 Result.string(..., null) 的歧义
         return Result.string(classes, new ArrayList<Vod>(), (JSONObject) null);
     }
 
@@ -57,7 +63,8 @@ public class Jinli extends Spider {
             payload.put("year", "");
             payload.put("keyword", "");
 
-            String res = OkHttp.postResult(apiHost + "/api/search", payload.toString(), headerx).getBody();
+            // 适配 OkHttp 返回 OkResult 的逻辑
+            String res = OkHttp.post(apiHost + "/api/search", payload.toString(), headerx).getBody();
             return parseList(res);
         } catch (Exception e) {
             return Result.get().string();
@@ -73,7 +80,7 @@ public class Jinli extends Spider {
             payload.put("type_id", "");
             payload.put("keyword", key);
 
-            String res = OkHttp.postResult(apiHost + "/api/search", payload.toString(), headerx).getBody();
+            String res = OkHttp.post(apiHost + "/api/search", payload.toString(), headerx).getBody();
             return parseList(res);
         } catch (Exception e) {
             return Result.get().string();
@@ -100,7 +107,7 @@ public class Jinli extends Spider {
     public String detailContent(List<String> ids) {
         try {
             String did = ids.get(0);
-            String res = OkHttp.postResult(apiHost + "/api/detail/" + did, "{}", headerx).getBody();
+            String res = OkHttp.post(apiHost + "/api/detail/" + did, "{}", headerx).getBody();
             JSONObject data = new JSONObject(res).getJSONObject("data");
 
             Vod vod = new Vod();
@@ -136,20 +143,17 @@ public class Jinli extends Spider {
     public String playerContent(String flag, String id, List<String> vipFlags) {
         try {
             String playUrl = id + "&auto=1";
+            // OkHttp.string 直接返回字符串，适配 playerContent 逻辑
             String html = OkHttp.string(playUrl, headerx);
             
             Pattern pattern = Pattern.compile("\"url\":\"(.*?)\"");
             Matcher matcher = pattern.matcher(html);
             if (matcher.find()) {
                 String realUrl = matcher.group(1).replace("\\/", "/");
-                if (realUrl.contains(".m3u8")) {
-                    return Result.get().url(realUrl).header(headerx).m3u8().string();
-                } else {
-                    return Result.get().url(realUrl).header(headerx).string();
-                }
+                return Result.get().url(realUrl).header(headerx).parse(0).string();
             }
             
-            return Result.get().url(id).header(headerx).string();
+            return Result.get().url(id).header(headerx).parse(0).string();
         } catch (Exception e) {
             return Result.get().string();
         }
