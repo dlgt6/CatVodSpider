@@ -80,7 +80,7 @@ public class Jinli extends Spider {
             payload.put("type_id", "");
             payload.put("keyword", key);
 
-            String res = OkHttp.post(apiHost + "/api/search", payload.toString(), headerx).getBody();
+            String res = OkHttp.post(apiHost + "/api/search", payload.toString(), headerx);
             return parseList(res);
         } catch (Exception e) {
             return Result.get().string();
