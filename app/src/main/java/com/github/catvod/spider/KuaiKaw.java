@@ -147,7 +147,7 @@ public class KuaiKaw extends Spider {
                     if (!seen.contains(key)) {
                         seen.add(key);
                         Vod vod = new Vod();
-                        vod.setVodId("/drama/" + bookId);
+                        vod.setVodId(bookId);
                         vod.setVodName(bookName);
                         vod.setVodPic(book.optString("coverWap", ""));
                         vod.setVodRemarks((book.optString("statusDesc", "") + " " + book.optString("totalChapterNum", "") + "集").trim());
@@ -172,7 +172,7 @@ public class KuaiKaw extends Spider {
                             if (!seen.contains(key)) {
                                 seen.add(key);
                                 Vod vod = new Vod();
-                                vod.setVodId("/drama/" + bookId);
+                                vod.setVodId(bookId);
                                 vod.setVodName(bookName);
                                 vod.setVodPic(book.optString("coverWap", ""));
                                 vod.setVodRemarks((book.optString("statusDesc", "") + " " + book.optString("totalChapterNum", "") + "集").trim());
@@ -209,7 +209,7 @@ public class KuaiKaw extends Spider {
                 JSONObject book = bookList.getJSONObject(i);
                 if (book.has("bookId")) {
                     Vod vod = new Vod();
-                    vod.setVodId("/drama/" + book.optString("bookId"));
+                    vod.setVodId(book.optString("bookId"));
                     vod.setVodName(book.optString("bookName", ""));
                     vod.setVodPic(book.optString("coverWap", ""));
                     vod.setVodRemarks((book.optString("statusDesc", "") + " " + book.optString("totalChapterNum", "") + "集").trim());
@@ -248,7 +248,7 @@ public class KuaiKaw extends Spider {
                 JSONObject book = bookList.getJSONObject(i);
                 if (book.has("bookId")) {
                     Vod vod = new Vod();
-                    vod.setVodId("/drama/" + book.optString("bookId"));
+                    vod.setVodId(book.optString("bookId"));
                     vod.setVodName(book.optString("bookName", ""));
                     vod.setVodPic(book.optString("coverWap", ""));
                     vod.setVodRemarks((book.optString("statusDesc", "") + " " + book.optString("totalChapterNum", "") + "集").trim());
@@ -267,8 +267,8 @@ public class KuaiKaw extends Spider {
         }
         
         String vodId = ids.get(0);
-        if (vodId.startsWith("/drama/")) {
-            vodId = vodId.substring(8);
+        if (!vodId.startsWith("/drama/")) {
+            vodId = "/drama/" + vodId;
         }
         
         String dramaUrl = SITE_URL + vodId;
