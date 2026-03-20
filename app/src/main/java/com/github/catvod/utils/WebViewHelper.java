@@ -175,7 +175,6 @@ public class WebViewHelper {
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             wv.setWebChromeClient(new WebChromeClient() {
-                @Override
                 public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
                     poolCount.decrementAndGet();
                     destroyWebView(view);
