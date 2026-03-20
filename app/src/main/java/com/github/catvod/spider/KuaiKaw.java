@@ -252,8 +252,8 @@ public class KuaiKaw extends Spider {
         }
         
         String vodId = ids.get(0);
-        if (!vodId.startsWith("/drama/")) {
-            vodId = "/drama/" + vodId;
+        if (vodId.startsWith("/drama/")) {
+            vodId = vodId.substring(8);
         }
         
         String dramaUrl = SITE_URL + vodId;
@@ -377,7 +377,7 @@ public class KuaiKaw extends Spider {
             return Result.get().url(id).header(getHeader()).string();
         }
         
-        String dramaId = parts[0].replace("/drama/", "");
+        String dramaId = parts[0];
         String chapterId = parts[1];
         
         String videoUrl = getEpisodeVideoUrl(dramaId, chapterId);
