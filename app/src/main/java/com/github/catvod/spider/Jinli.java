@@ -14,8 +14,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * 锦鲤短剧 Java 版本
@@ -30,9 +28,10 @@ public class Jinli extends Spider {
     public void init(Context context, String ext) throws Exception {
         super.init(context, ext);
         headerx = new HashMap<>();
-        headerx.put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36");
+        headerx.put("User-Agent", "Mozilla/5.0 (Linux; Android 12; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Mobile Safari/537.36");
         headerx.put("Referer", "https://www.jinlidj.com/");
-        headerx.put("Origin", "https://www.jinlidj.com");
+        headerx.put("X-Requested-With", "com.jinlidj.app");
+        headerx.put("Origin", "https://player.jinlidj.com");
     }
 
     @Override
@@ -143,51 +142,20 @@ public class Jinli extends Spider {
     public String playerContent(String flag, String id, List<String> vipFlags) {
         try {
             String playUrl = id + "&auto=1";
-            String html = OkHttp.string(playUrl, headerx);
+            SpiderDebug.log("锦鲤短剧 - 播放URL: " + playUrl);
             
-            Pattern pattern = Pattern.compile("\"url\":\"(.*?)\"");
-            Matcher matcher = pattern.matcher(html);
-            if (matcher.find()) {
-                String realUrl = matcher.group(1).replace("\\/", "/");
-                SpiderDebug.log("锦鲤短剧 - 最终播放地址: " + realUrl);
-                
-                if (realUrl.contains(".m3u8")) {
-                    SpiderDebug.log("锦鲤短剧 - 检测到 m3u8 格式，使用本地代理");
-                    String proxyUrl = Proxy.getUrl(siteKey, "&url=" + java.net.URLEncoder.encode(realUrl, "UTF-8"));
-                    SpiderDebug.log("锦鲤短剧 - 代理地址: " + proxyUrl);
-                    return Result.get().url(proxyUrl).header(headerx).string();
-                }
-                
-                return Result.get().url(realUrl).header(headerx).string();
-            }
-            
-            return Result.get().url(id).header(headerx).string();
+            return Result.get()
+                .url(playUrl)
+                .header("User-Agent", headerx.get("User-Agent"))
+                .header("Referer", headerx.get("Referer"))
+                .header("X-Requested-With", headerx.get("X-Requested-With"))
+                .header("Origin", headerx.get("Origin"))
+                .parse(1)
+                .string();
         } catch (Exception e) {
             SpiderDebug.log("锦鲤短剧 - 播放失败: " + e.getMessage());
+            e.printStackTrace();
             return Result.get().string();
-        }
-    }
-
-    @Override
-    public Object[] proxy(Map<String, String> params) {
-        try {
-            String url = params.get("url");
-            if (url == null || url.isEmpty()) {
-                return new Object[]{404, "text/plain", null};
-            }
-            
-            SpiderDebug.log("锦鲤短剧 - 代理请求: " + url);
-            
-            byte[] data = OkHttp.bytes(url, headerx);
-            if (data == null || data.length == 0) {
-                return new Object[]{404, "text/plain", null};
-            }
-            
-            String contentType = url.contains(".m3u8") ? "application/x-mpegURL" : "application/octet-stream";
-            return new Object[]{200, contentType, new java.io.ByteArrayInputStream(data)};
-        } catch (Exception e) {
-            SpiderDebug.log("锦鲤短剧 - 代理失败: " + e.getMessage());
-            return new Object[]{500, "text/plain", null};
         }
     }
 }
