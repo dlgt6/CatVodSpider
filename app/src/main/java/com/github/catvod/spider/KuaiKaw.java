@@ -300,7 +300,7 @@ public class KuaiKaw extends Spider {
                 performers.add(performerList.getJSONObject(i).optString("name", ""));
             }
         }
-        vod.setVodActor(TextUtils.join(", ", performers));
+        vod.setVodActor(TextUtils.join(performers, ", "));
         
         List<String> playUrls = processEpisodes(vodId, chapterList);
         if (!playUrls.isEmpty()) {
@@ -418,14 +418,16 @@ public class KuaiKaw extends Spider {
                 mp4Matches.add(mp4Matcher.group(1));
             }
             
-            if (!mp4Matches.isEmpty()) {
-                for (String url : mp4Matches) {
-                    if (url.contains(chapterId) || url.contains(dramaId)) {
-                        return url;
-                    }
-                }
-                return mp4Matches.get(0);
+            if (mp4Matches.isEmpty()) {
+                return null;
             }
+            
+            for (String url : mp4Matches) {
+                if (url.contains(chapterId) || url.contains(dramaId)) {
+                    return url;
+                }
+            }
+            return mp4Matches.get(0);
         } catch (Exception e) {
             SpiderDebug.log(e);
         }
