@@ -7,6 +7,7 @@ import com.github.catvod.bean.Class;
 import com.github.catvod.bean.Result;
 import com.github.catvod.bean.Vod;
 import com.github.catvod.crawler.Spider;
+import com.github.catvod.crawler.SpiderDebug;
 import com.github.catvod.net.OkHttp;
 import com.github.catvod.utils.Util;
 
@@ -71,19 +72,6 @@ public class KuaiKaw extends Spider {
         return null;
     }
 
-    private Vod parseBookInfo(JSONObject book) {
-        if (book == null || !book.has("bookId")) {
-            return null;
-        }
-        
-        Vod vod = new Vod();
-        vod.setVodId("/drama/" + book.optString("bookId"));
-        vod.setVodName(book.optString("bookName", ""));
-        vod.setVodPic(book.optString("coverWap", ""));
-        vod.setVodRemarks((book.optString("statusDesc", "") + " " + book.optString("totalChapterNum", "") + "集").trim());
-        return vod;
-    }
-
     @Override
     public String homeContent(boolean filter) throws Exception {
         List<Class> classes = new ArrayList<>();
@@ -129,12 +117,27 @@ public class KuaiKaw extends Spider {
             return Result.string(new ArrayList<Vod>());
         }
         
+        Set<String> seen = new HashSet<>();
+        List<Vod> uniqueVideos = new ArrayList<>();
+        
         JSONArray bannerList = pageProps.optJSONArray("bannerList");
         if (bannerList != null) {
             for (int i = 0; i < bannerList.length(); i++) {
-                Vod vod = parseBookInfo(bannerList.getJSONObject(i));
-                if (vod != null) {
-                    videos.add(vod);
+                JSONObject book = bannerList.getJSONObject(i);
+                if (book.has("bookId")) {
+                    String bookId = book.optString("bookId");
+                    String bookName = book.optString("bookName");
+                    String key = bookId + "_" + bookName;
+                    
+                    if (!seen.contains(key)) {
+                        seen.add(key);
+                        Vod vod = new Vod();
+                        vod.setVodId("/drama/" + bookId);
+                        vod.setVodName(bookName);
+                        vod.setVodPic(book.optString("coverWap", ""));
+                        vod.setVodRemarks((book.optString("statusDesc", "") + " " + book.optString("totalChapterNum", "") + "集").trim());
+                        uniqueVideos.add(vod);
+                    }
                 }
             }
         }
@@ -145,22 +148,24 @@ public class KuaiKaw extends Spider {
                 JSONArray bookInfos = seoColumnVos.getJSONObject(i).optJSONArray("bookInfos");
                 if (bookInfos != null) {
                     for (int j = 0; j < bookInfos.length(); j++) {
-                        Vod vod = parseBookInfo(bookInfos.getJSONObject(j));
-                        if (vod != null) {
-                            videos.add(vod);
+                        JSONObject book = bookInfos.getJSONObject(j);
+                        if (book.has("bookId")) {
+                            String bookId = book.optString("bookId");
+                            String bookName = book.optString("bookName");
+                            String key = bookId + "_" + bookName;
+                            
+                            if (!seen.contains(key)) {
+                                seen.add(key);
+                                Vod vod = new Vod();
+                                vod.setVodId("/drama/" + bookId);
+                                vod.setVodName(bookName);
+                                vod.setVodPic(book.optString("coverWap", ""));
+                                vod.setVodRemarks((book.optString("statusDesc", "") + " " + book.optString("totalChapterNum", "") + "集").trim());
+                                uniqueVideos.add(vod);
+                            }
                         }
                     }
                 }
-            }
-        }
-        
-        Set<String> seen = new HashSet<>();
-        List<Vod> uniqueVideos = new ArrayList<>();
-        for (Vod video : videos) {
-            String key = video.getVodId() + "_" + video.getVodName();
-            if (!seen.contains(key)) {
-                seen.add(key);
-                uniqueVideos.add(video);
             }
         }
         
@@ -186,8 +191,13 @@ public class KuaiKaw extends Spider {
         JSONArray bookList = pageProps.optJSONArray("bookList");
         if (bookList != null) {
             for (int i = 0; i < bookList.length(); i++) {
-                Vod vod = parseBookInfo(bookList.getJSONObject(i));
-                if (vod != null) {
+                JSONObject book = bookList.getJSONObject(i);
+                if (book.has("bookId")) {
+                    Vod vod = new Vod();
+                    vod.setVodId("/drama/" + book.optString("bookId"));
+                    vod.setVodName(book.optString("bookName", ""));
+                    vod.setVodPic(book.optString("coverWap", ""));
+                    vod.setVodRemarks((book.optString("statusDesc", "") + " " + book.optString("totalChapterNum", "") + "集").trim());
                     videos.add(vod);
                 }
             }
@@ -220,8 +230,13 @@ public class KuaiKaw extends Spider {
         JSONArray bookList = pageProps.optJSONArray("bookList");
         if (bookList != null) {
             for (int i = 0; i < bookList.length(); i++) {
-                Vod vod = parseBookInfo(bookList.getJSONObject(i));
-                if (vod != null) {
+                JSONObject book = bookList.getJSONObject(i);
+                if (book.has("bookId")) {
+                    Vod vod = new Vod();
+                    vod.setVodId("/drama/" + book.optString("bookId"));
+                    vod.setVodName(book.optString("bookName", ""));
+                    vod.setVodPic(book.optString("coverWap", ""));
+                    vod.setVodRemarks((book.optString("statusDesc", "") + " " + book.optString("totalChapterNum", "") + "集").trim());
                     videos.add(vod);
                 }
             }
