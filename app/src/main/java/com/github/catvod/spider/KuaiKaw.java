@@ -44,11 +44,14 @@ public class KuaiKaw extends Spider {
     }};
     
     private final Map<String, String> headers = new HashMap<String, String>() {{
-        put("User-Agent", Util.CHROME);
+        put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0");
         put("Referer", SITE_URL);
         put("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8");
         put("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
+        put("Cookie", "");
     }};
+    
+    private String cookie = "";
 
     @Override
     public void init(Context context, String extend) throws Exception {
@@ -56,10 +59,22 @@ public class KuaiKaw extends Spider {
     }
 
     private Map<String, String> getHeader() {
-        return headers;
+        Map<String, String> header = new HashMap<>();
+        header.put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0");
+        header.put("Referer", SITE_URL);
+        header.put("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8");
+        header.put("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
+        if (!cookie.isEmpty()) {
+            header.put("Cookie", cookie);
+        }
+        return header;
     }
 
-    private JSONObject extractNextData(String html) {
+    private String extractNextData(String html) {
+        if (html.contains("加入我们：hr@dianzhong.com")) {
+            return null;
+        }
+        
         try {
             Pattern pattern = Pattern.compile(NEXT_DATA_PATTERN, Pattern.DOTALL);
             Matcher matcher = pattern.matcher(html);
