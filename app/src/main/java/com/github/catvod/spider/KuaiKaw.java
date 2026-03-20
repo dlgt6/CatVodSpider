@@ -1,7 +1,7 @@
 package com.github.catvod.spider;
 
 import android.content.Context;
-import android.net.Uri;
+import android.text.TextUtils;
 
 import com.github.catvod.bean.Class;
 import com.github.catvod.bean.Result;
@@ -9,347 +9,532 @@ import com.github.catvod.bean.Vod;
 import com.github.catvod.crawler.Spider;
 import com.github.catvod.net.OkHttp;
 import com.github.catvod.utils.Util;
-import com.github.catvod.utils.WebViewHelper;
 
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class KuaiKaw extends Spider {
 
-    private static final String siteUrl = "https://www.kuaikaw.cn";
-    private Context context;
-    private boolean isSpaSite = false;
-    private boolean detected = false;
+    private final String siteUrl = "https://www.kuaikaw.cn";
+    
+    private final Map<String, String> cateManual = new HashMap<String, String>() {{
+        put("甜宠", "462");
+        put("古装仙侠", "1102");
+        put("现代言情", "1145");
+        put("青春", "1170");
+        put("豪门恩怨", "585");
+        put("逆袭", "417-464");
+        put("重生", "439-465");
+        put("系统", "1159");
+        put("总裁", "1147");
+        put("职场商战", "943");
+    }};
+    
+    private final Map<String, String> headers = new HashMap<String, String>() {{
+        put("User-Agent", Util.CHROME);
+        put("Referer", siteUrl);
+        put("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8");
+        put("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
+    }};
 
     @Override
-    public void init(Context context, String extend) {
-        this.context = context;
-        WebViewHelper.getInstance().preWarm(context);
-    }
-
-    private Map<String, String> getHeader() {
-        Map<String, String> header = new HashMap<>();
-        header.put("User-Agent", Util.CHROME);
-        header.put("Referer", siteUrl);
-        return header;
-    }
-
-    private boolean isSpaSite(String html) {
-        Document doc = Jsoup.parse(html);
-        
-        Elements items = doc.select(".video-list .item, .vod-list .item, .video-item, .drama-item");
-        if (!items.isEmpty()) return false;
-        
-        if (html.contains("id=\"app\"") && html.contains("chunk")) return true;
-        if (html.contains("__NEXT_DATA__")) return true;
-        if (html.contains("window.__INITIAL_STATE__")) return true;
-        if (html.contains("ng-version")) return true;
-        if (html.contains("data-v-") && items.isEmpty()) return true;
-        
-        String bodyText = doc.select("body").text().trim();
-        if (bodyText.length() < 100 && html.contains("<script")) return true;
-        
-        return false;
-    }
-
-    private String getHtml(String url) {
-        if (!detected) {
-            String html = OkHttp.string(url, getHeader());
-            isSpaSite = isSpaSite(html);
-            detected = true;
-            if (!isSpaSite) return html;
-        }
-        
-        if (isSpaSite) {
-            String html = WebViewHelper.getInstance().getHtml(context, url, 15000);
-            if (!html.isEmpty()) return html;
-        }
-        
-        return OkHttp.string(url, getHeader());
+    public void init(Context context, String extend) throws Exception {
+        super.init(context, extend);
     }
 
     @Override
-    public String homeContent(boolean filter) {
+    public String homeContent(boolean filter) throws Exception {
         List<Class> classes = new ArrayList<>();
-        classes.add(new Class("1", "全部"));
-        classes.add(new Class("2", "都市"));
-        classes.add(new Class("3", "古装"));
-        classes.add(new Class("4", "言情"));
-        classes.add(new Class("5", "悬疑"));
-        classes.add(new Class("6", "喜剧"));
-
+        for (Map.Entry<String, String> entry : cateManual.entrySet()) {
+            classes.add(new Class(entry.getValue(), entry.getKey()));
+        }
+        
         List<Vod> list = new ArrayList<>();
-        Document doc = Jsoup.parse(getHtml(siteUrl));
-        
-        Elements items = doc.select(".drama-item, .video-item, .item, a[href*=/detail/], a[href*=/video/]");
-        
-        for (Element item : items) {
-            Element link = item.tagName().equals("a") ? item : item.selectFirst("a");
-            if (link == null) continue;
-            
-            String vodId = link.attr("href");
-            String vodName = link.attr("title");
-            if (vodName == null || vodName.isEmpty()) {
-                vodName = link.text();
-            }
-            
-            Element img = item.selectFirst("img");
-            String vodPic = "";
-            if (img != null) {
-                vodPic = img.attr("data-src");
-                if (vodPic.isEmpty()) vodPic = img.attr("data-original");
-                if (vodPic.isEmpty()) vodPic = img.attr("src");
-                if (!vodPic.isEmpty() && !vodPic.startsWith("http")) {
-                    vodPic = siteUrl + (vodPic.startsWith("/") ? "" : "/") + vodPic;
-                }
-            }
-            
-            String vodRemarks = "";
-            Element remarksEl = item.selectFirst(".remarks, .status, .tag");
-            if (remarksEl != null) {
-                vodRemarks = remarksEl.text();
-            }
-            
-            if (vodId != null && !vodId.isEmpty() && vodName != null && !vodName.isEmpty()) {
-                list.add(new Vod(vodId, vodName, vodPic, vodRemarks));
-            }
-            
-            if (list.size() >= 20) break;
-        }
-
-        return Result.string(classes, list);
-    }
-
-    @Override
-    public String categoryContent(String tid, String pg, boolean filter, HashMap<String, String> extend) {
-        List<Vod> list = new ArrayList<>();
-        
-        String cateUrl = siteUrl;
-        if (!"1".equals(tid)) {
-            cateUrl = siteUrl + "/category/" + tid;
-        }
-        if (!"1".equals(pg)) {
-            cateUrl = cateUrl + "?page=" + pg;
-        }
-        
-        Document doc = Jsoup.parse(getHtml(cateUrl));
-        
-        Elements items = doc.select(".drama-item, .video-item, .item, a[href*=/detail/], a[href*=/video/]");
-        
-        for (Element item : items) {
-            Element link = item.tagName().equals("a") ? item : item.selectFirst("a");
-            if (link == null) continue;
-            
-            String vodId = link.attr("href");
-            String vodName = link.attr("title");
-            if (vodName == null || vodName.isEmpty()) {
-                vodName = link.text();
-            }
-            
-            Element img = item.selectFirst("img");
-            String vodPic = "";
-            if (img != null) {
-                vodPic = img.attr("data-src");
-                if (vodPic.isEmpty()) vodPic = img.attr("data-original");
-                if (vodPic.isEmpty()) vodPic = img.attr("src");
-                if (!vodPic.isEmpty() && !vodPic.startsWith("http")) {
-                    vodPic = siteUrl + (vodPic.startsWith("/") ? "" : "/") + vodPic;
-                }
-            }
-            
-            String vodRemarks = "";
-            Element remarksEl = item.selectFirst(".remarks, .status, .tag");
-            if (remarksEl != null) {
-                vodRemarks = remarksEl.text();
-            }
-            
-            if (vodId != null && !vodId.isEmpty() && vodName != null && !vodName.isEmpty()) {
-                list.add(new Vod(vodId, vodName, vodPic, vodRemarks));
-            }
-        }
-
-        return Result.string(list);
-    }
-
-    @Override
-    public String detailContent(List<String> ids) {
-        String detailUrl = ids.get(0);
-        if (!detailUrl.startsWith("http")) {
-            detailUrl = siteUrl + (detailUrl.startsWith("/") ? "" : "/") + detailUrl;
-        }
-        
-        String html = getHtml(detailUrl);
-        Document doc = Jsoup.parse(html);
-        
-        Vod vod = new Vod();
-        vod.setVodId(ids.get(0));
-        
-        Element titleEl = doc.selectFirst("h1, .title, .video-title, .drama-title, .name, .drama-name, [class*=title]");
-        if (titleEl != null) {
-            vod.setVodName(titleEl.text());
-        }
-        
-        Element picEl = doc.selectFirst("img.poster, img.cover, .poster img, .cover img, .thumb img, img[class*=poster], img[class*=cover]");
-        if (picEl != null) {
-            String vodPic = picEl.attr("data-src");
-            if (vodPic.isEmpty()) vodPic = picEl.attr("data-original");
-            if (vodPic.isEmpty()) vodPic = picEl.attr("src");
-            if (!vodPic.isEmpty() && !vodPic.startsWith("http")) {
-                vodPic = siteUrl + (vodPic.startsWith("/") ? "" : "/") + vodPic;
-            }
-            vod.setVodPic(vodPic);
-        }
-        
-        Element descEl = doc.selectFirst(".desc, .content, .intro, .description, .synopsis, [class*=desc], [class*=intro]");
-        if (descEl != null) {
-            vod.setVodContent(descEl.text());
-        }
-        
-        StringBuilder playFrom = new StringBuilder();
-        StringBuilder playUrl = new StringBuilder();
-        
-        Elements episodes = doc.select("a[href*=/play/], .episode-list a, .play-list a, .episodes a, .episode a, [class*=episode] a, [class*=play] a");
-        
-        if (episodes.isEmpty()) {
-            episodes = doc.select("a[href*=/video/], a[href*=/watch/]");
-        }
-        
-        if (!episodes.isEmpty()) {
-            playFrom.append("默认");
-            for (int i = 0; i < episodes.size(); i++) {
-                Element ep = episodes.get(i);
-                String epName = ep.text().trim();
-                if (epName == null || epName.isEmpty()) {
-                    epName = "第" + (i + 1) + "集";
-                }
-                String epUrl = ep.attr("href");
-                if (!epUrl.isEmpty()) {
-                    playUrl.append(epName).append("$").append(epUrl);
-                    if (i < episodes.size() - 1) {
-                        playUrl.append("#");
-                    }
-                }
-            }
-        }
-        
-        if (playUrl.length() == 0) {
-            String videoUrl = matchVideoUrl(html);
-            if (!videoUrl.isEmpty()) {
-                playFrom.append("默认");
-                playUrl.append("播放$").append(videoUrl);
-            }
-        }
-        
-        vod.setVodPlayFrom(playFrom.toString());
-        vod.setVodPlayUrl(playUrl.toString());
-        
-        return Result.string(vod);
-    }
-
-    @Override
-    public String searchContent(String key, boolean quick) {
-        List<Vod> list = new ArrayList<>();
-        
         try {
-            String searchUrl = siteUrl + "/search?wd=" + Uri.encode(key);
-            Document doc = Jsoup.parse(getHtml(searchUrl));
-            
-            Elements items = doc.select(".search-item, .drama-item, .video-item, .item, a[href*=/detail/]");
-            
-            for (Element item : items) {
-                Element link = item.tagName().equals("a") ? item : item.selectFirst("a");
-                if (link == null) continue;
-                
-                String vodId = link.attr("href");
-                String vodName = link.attr("title");
-                if (vodName == null || vodName.isEmpty()) {
-                    vodName = link.text();
-                }
-                
-                Element img = item.selectFirst("img");
-                String vodPic = "";
-                if (img != null) {
-                    vodPic = img.attr("data-src");
-                    if (vodPic.isEmpty()) vodPic = img.attr("data-original");
-                    if (vodPic.isEmpty()) vodPic = img.attr("src");
-                    if (!vodPic.isEmpty() && !vodPic.startsWith("http")) {
-                        vodPic = siteUrl + (vodPic.startsWith("/") ? "" : "/") + vodPic;
-                    }
-                }
-                
-                String vodRemarks = "";
-                Element remarksEl = item.selectFirst(".remarks, .status, .tag");
-                if (remarksEl != null) {
-                    vodRemarks = remarksEl.text();
-                }
-                
-                if (vodId != null && !vodId.isEmpty() && vodName != null && !vodName.isEmpty()) {
-                    list.add(new Vod(vodId, vodName, vodPic, vodRemarks));
+            String resultStr = homeVideoContent();
+            JSONObject result = new JSONObject(resultStr);
+            JSONArray array = result.optJSONArray("list");
+            if (array != null) {
+                for (int i = 0; i < array.length(); i++) {
+                    JSONObject vodObj = array.getJSONObject(i);
+                    list.add(new Vod(
+                        vodObj.optString("vod_id"),
+                        vodObj.optString("vod_name"),
+                        vodObj.optString("vod_pic"),
+                        vodObj.optString("vod_remarks")
+                    ));
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
         
-        return Result.string(list);
+        return Result.string(classes, list);
     }
 
     @Override
-    public String playerContent(String flag, String id, List<String> vipFlags) {
-        String playUrl = id;
-        if (!playUrl.startsWith("http")) {
-            playUrl = siteUrl + (playUrl.startsWith("/") ? "" : "/") + playUrl;
+    public String homeVideoContent() throws Exception {
+        List<Vod> videos = new ArrayList<>();
+        String htmlContent = OkHttp.string(siteUrl, headers);
+        
+        Pattern pattern = Pattern.compile("<script id=\"__NEXT_DATA__\" type=\"application/json\">(.*?)</script>", Pattern.DOTALL);
+        Matcher matcher = pattern.matcher(htmlContent);
+        if (!matcher.find()) {
+            JSONObject result = new JSONObject();
+            result.put("list", new JSONArray());
+            return result.toString();
         }
         
-        WebViewHelper.VideoResult result = WebViewHelper.getInstance()
-            .getVideoSource(context, playUrl, 20000);
+        JSONObject nextDataJson = new JSONObject(matcher.group(1));
+        JSONObject pageProps = nextDataJson.optJSONObject("props").optJSONObject("pageProps");
         
-        if (result.hasVideo()) {
-            return Result.get()
-                .url(result.getBestVideo())
-                .header(getHeader())
-                .string();
-        }
-        
-        String html = getHtml(playUrl);
-        String videoUrl = matchVideoUrl(html);
-        if (!videoUrl.isEmpty()) {
-            return Result.get().url(videoUrl).header(getHeader()).string();
-        }
-        
-        return Result.get().parse().url(playUrl).string();
-    }
-
-    private String matchVideoUrl(String html) {
-        String[] patterns = {
-            "\"(https?://[^\"]+\\.m3u8[^\"]*)\"",
-            "'(https?://[^']+\\.m3u8[^']*)'",
-            "\"(https?://[^\"]+\\.mp4[^\"]*)\"",
-            "'(https?://[^']+\\.mp4[^']*)'",
-            "url[\"']?\\s*[:=]\\s*[\"']([^\"']+(?:\\.m3u8|\\.mp4)[^\"']*)[\"']",
-            "src[\"']?\\s*[:=]\\s*[\"']([^\"']+(?:\\.m3u8|\\.mp4)[^\"']*)[\"']"
-        };
-        
-        for (String pattern : patterns) {
-            Matcher matcher = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE).matcher(html);
-            if (matcher.find()) {
-                return matcher.group(1);
+        if (pageProps.has("bannerList")) {
+            JSONArray bannerList = pageProps.optJSONArray("bannerList");
+            for (int i = 0; i < bannerList.length(); i++) {
+                JSONObject banner = bannerList.getJSONObject(i);
+                if (banner.has("bookId")) {
+                    Vod vod = new Vod();
+                    vod.setVodId("/drama/" + banner.getString("bookId"));
+                    vod.setVodName(banner.optString("bookName", ""));
+                    vod.setVodPic(banner.optString("coverWap", ""));
+                    vod.setVodRemarks((banner.optString("statusDesc", "") + " " + banner.optString("totalChapterNum", "") + "集").trim());
+                    videos.add(vod);
+                }
             }
         }
-        return "";
+        
+        if (pageProps.has("seoColumnVos")) {
+            JSONArray seoColumnVos = pageProps.optJSONArray("seoColumnVos");
+            for (int i = 0; i < seoColumnVos.length(); i++) {
+                JSONObject column = seoColumnVos.getJSONObject(i);
+                JSONArray bookInfos = column.optJSONArray("bookInfos");
+                if (bookInfos != null) {
+                    for (int j = 0; j < bookInfos.length(); j++) {
+                        JSONObject book = bookInfos.getJSONObject(j);
+                        if (book.has("bookId")) {
+                            Vod vod = new Vod();
+                            vod.setVodId("/drama/" + book.getString("bookId"));
+                            vod.setVodName(book.optString("bookName", ""));
+                            vod.setVodPic(book.optString("coverWap", ""));
+                            vod.setVodRemarks((book.optString("statusDesc", "") + " " + book.optString("totalChapterNum", "") + "集").trim());
+                            videos.add(vod);
+                        }
+                    }
+                }
+            }
+        }
+        
+        Set<String> seen = new HashSet<>();
+        List<Vod> uniqueVideos = new ArrayList<>();
+        for (Vod video : videos) {
+            String key = video.getVodId() + "_" + video.getVodName();
+            if (!seen.contains(key)) {
+                seen.add(key);
+                uniqueVideos.add(video);
+            }
+        }
+        
+        JSONObject result = new JSONObject();
+        JSONArray listArray = new JSONArray();
+        for (Vod vod : uniqueVideos) {
+            JSONObject vodObj = new JSONObject();
+            vodObj.put("vod_id", vod.getVodId());
+            vodObj.put("vod_name", vod.getVodName());
+            vodObj.put("vod_pic", vod.getVodPic());
+            vodObj.put("vod_remarks", vod.getVodRemarks());
+            listArray.put(vodObj);
+        }
+        result.put("list", listArray);
+        return result.toString();
+    }
+
+    @Override
+    public String categoryContent(String tid, String pg, boolean filter, HashMap<String, String> extend) throws Exception {
+        JSONObject result = new JSONObject();
+        result.put("page", Integer.parseInt(pg));
+        result.put("pagecount", 1);
+        result.put("limit", 20);
+        result.put("total", 0);
+        
+        List<Vod> videos = new ArrayList<>();
+        String url = siteUrl + "/browse/" + tid + "/" + pg;
+        
+        String htmlContent = OkHttp.string(url, headers);
+        Pattern pattern = Pattern.compile("<script id=\"__NEXT_DATA__\" type=\"application/json\">(.*?)</script>", Pattern.DOTALL);
+        Matcher matcher = pattern.matcher(htmlContent);
+        if (!matcher.find()) {
+            result.put("list", new JSONArray());
+            return result.toString();
+        }
+        
+        try {
+            JSONObject nextDataJson = new JSONObject(matcher.group(1));
+            JSONObject pageProps = nextDataJson.optJSONObject("props").optJSONObject("pageProps");
+            
+            int currentPage = pageProps.optInt("page", 1);
+            int totalPages = pageProps.optInt("pages", 1);
+            JSONArray bookList = pageProps.optJSONArray("bookList");
+            
+            if (bookList != null) {
+                for (int i = 0; i < bookList.length(); i++) {
+                    JSONObject book = bookList.getJSONObject(i);
+                    if (book.has("bookId")) {
+                        Vod vod = new Vod();
+                        vod.setVodId("/drama/" + book.getString("bookId"));
+                        vod.setVodName(book.optString("bookName", ""));
+                        vod.setVodPic(book.optString("coverWap", ""));
+                        vod.setVodRemarks((book.optString("statusDesc", "") + " " + book.optString("totalChapterNum", "") + "集").trim());
+                        videos.add(vod);
+                    }
+                }
+            }
+            
+            result.put("page", currentPage);
+            result.put("pagecount", totalPages);
+            result.put("limit", videos.size());
+            result.put("total", videos.size() * totalPages);
+            
+            JSONArray listArray = new JSONArray();
+            for (Vod vod : videos) {
+                JSONObject vodObj = new JSONObject();
+                vodObj.put("vod_id", vod.getVodId());
+                vodObj.put("vod_name", vod.getVodName());
+                vodObj.put("vod_pic", vod.getVodPic());
+                vodObj.put("vod_remarks", vod.getVodRemarks());
+                listArray.put(vodObj);
+            }
+            result.put("list", listArray);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
+        return result.toString();
+    }
+
+    @Override
+    public String searchContent(String key, boolean quick) throws Exception {
+        return searchContentPage(key, quick, "1");
+    }
+
+    @Override
+    public String searchContent(String key, boolean quick, String pg) throws Exception {
+        return searchContentPage(key, quick, pg);
+    }
+
+    private String searchContentPage(String key, boolean quick, String pg) throws Exception {
+        JSONObject result = new JSONObject();
+        result.put("page", Integer.parseInt(pg));
+        result.put("pagecount", 1);
+        result.put("limit", 20);
+        result.put("total", 0);
+        
+        List<Vod> videos = new ArrayList<>();
+        String searchUrl = siteUrl + "/search?searchValue=" + URLEncoder.encode(key, "UTF-8") + "&page=" + pg;
+        
+        String htmlContent = OkHttp.string(searchUrl, headers);
+        Pattern pattern = Pattern.compile("<script id=\"__NEXT_DATA__\" type=\"application/json\">(.*?)</script>", Pattern.DOTALL);
+        Matcher matcher = pattern.matcher(htmlContent);
+        if (!matcher.find()) {
+            result.put("list", new JSONArray());
+            return result.toString();
+        }
+        
+        try {
+            JSONObject nextDataJson = new JSONObject(matcher.group(1));
+            JSONObject pageProps = nextDataJson.optJSONObject("props").optJSONObject("pageProps");
+            
+            int totalPages = pageProps.optInt("pages", 1);
+            JSONArray bookList = pageProps.optJSONArray("bookList");
+            
+            if (bookList != null) {
+                for (int i = 0; i < bookList.length(); i++) {
+                    JSONObject book = bookList.getJSONObject(i);
+                    if (book.has("bookId")) {
+                        Vod vod = new Vod();
+                        vod.setVodId("/drama/" + book.getString("bookId"));
+                        vod.setVodName(book.optString("bookName", ""));
+                        vod.setVodPic(book.optString("coverWap", ""));
+                        vod.setVodRemarks((book.optString("statusDesc", "") + " " + book.optString("totalChapterNum", "") + "集").trim());
+                        videos.add(vod);
+                    }
+                }
+            }
+            
+            result.put("pagecount", totalPages);
+            result.put("total", videos.size() * totalPages);
+            
+            JSONArray listArray = new JSONArray();
+            for (Vod vod : videos) {
+                JSONObject vodObj = new JSONObject();
+                vodObj.put("vod_id", vod.getVodId());
+                vodObj.put("vod_name", vod.getVodName());
+                vodObj.put("vod_pic", vod.getVodPic());
+                vodObj.put("vod_remarks", vod.getVodRemarks());
+                listArray.put(vodObj);
+            }
+            result.put("list", listArray);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
+        return result.toString();
+    }
+
+    @Override
+    public String detailContent(List<String> ids) throws Exception {
+        JSONObject result = new JSONObject();
+        JSONArray listArray = new JSONArray();
+        
+        if (ids == null || ids.isEmpty()) {
+            result.put("list", listArray);
+            return result.toString();
+        }
+        
+        String vodId = ids.get(0);
+        if (!vodId.startsWith("/drama/")) {
+            vodId = "/drama/" + vodId;
+        }
+        
+        String dramaUrl = siteUrl + vodId;
+        String html = OkHttp.string(dramaUrl, headers);
+        
+        Pattern pattern = Pattern.compile("<script id=\"__NEXT_DATA__\" type=\"application/json\">(.*?)</script>", Pattern.DOTALL);
+        Matcher matcher = pattern.matcher(html);
+        if (!matcher.find()) {
+            result.put("list", listArray);
+            return result.toString();
+        }
+        
+        try {
+            JSONObject nextData = new JSONObject(matcher.group(1));
+            JSONObject pageProps = nextData.optJSONObject("props").optJSONObject("pageProps");
+            JSONObject bookInfo = pageProps.optJSONObject("bookInfoVo");
+            JSONArray chapterList = pageProps.optJSONArray("chapterList");
+            
+            if (bookInfo == null || !bookInfo.has("bookId")) {
+                result.put("list", listArray);
+                return result.toString();
+            }
+            
+            JSONArray categoryList = bookInfo.optJSONArray("categoryList");
+            List<String> categories = new ArrayList<>();
+            if (categoryList != null) {
+                for (int i = 0; i < categoryList.length(); i++) {
+                    JSONObject category = categoryList.getJSONObject(i);
+                    categories.add(category.optString("name", ""));
+                }
+            }
+            
+            JSONArray performerList = bookInfo.optJSONArray("performerList");
+            List<String> performers = new ArrayList<>();
+            if (performerList != null) {
+                for (int i = 0; i < performerList.length(); i++) {
+                    JSONObject performer = performerList.getJSONObject(i);
+                    performers.add(performer.optString("name", ""));
+                }
+            }
+            
+            Vod vod = new Vod();
+            vod.setVodId(vodId);
+            vod.setVodName(bookInfo.optString("title", ""));
+            vod.setVodPic(bookInfo.optString("coverWap", ""));
+            vod.setTypeName(TextUtils.join(",", categories));
+            vod.setVodArea(bookInfo.optString("countryName", ""));
+            vod.setVodRemarks((bookInfo.optString("statusDesc", "") + " " + bookInfo.optString("totalChapterNum", "") + "集").trim());
+            vod.setVodActor(TextUtils.join(", ", performers));
+            vod.setVodContent(bookInfo.optString("introduction", ""));
+            
+            List<String> playUrls = processEpisodes(vodId, chapterList);
+            if (!playUrls.isEmpty()) {
+                vod.setVodPlayFrom("河马剧场");
+                vod.setVodPlayUrl(TextUtils.join("$$$", playUrls));
+            }
+            
+            JSONObject vodObj = new JSONObject();
+            vodObj.put("vod_id", vod.getVodId());
+            vodObj.put("vod_name", vod.getVodName());
+            vodObj.put("vod_pic", vod.getVodPic());
+            vodObj.put("type_name", vod.getTypeName());
+            vodObj.put("vod_area", vod.getVodArea());
+            vodObj.put("vod_remarks", vod.getVodRemarks());
+            vodObj.put("vod_actor", vod.getVodActor());
+            vodObj.put("vod_content", vod.getVodContent());
+            vodObj.put("vod_play_from", vod.getVodPlayFrom());
+            vodObj.put("vod_play_url", vod.getVodPlayUrl());
+            
+            listArray.put(vodObj);
+            result.put("list", listArray);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
+        return result.toString();
+    }
+
+    private List<String> processEpisodes(String vodId, JSONArray chapterList) {
+        List<String> playUrls = new ArrayList<>();
+        List<String> episodes = new ArrayList<>();
+        
+        if (chapterList != null) {
+            for (int i = 0; i < chapterList.length(); i++) {
+                try {
+                    JSONObject chapter = chapterList.getJSONObject(i);
+                    String chapterId = chapter.optString("chapterId", "");
+                    String chapterName = chapter.optString("chapterName", "");
+                    
+                    if (chapterId.isEmpty() || chapterName.isEmpty()) {
+                        continue;
+                    }
+                    
+                    String videoUrl = getDirectVideoUrl(chapter);
+                    if (videoUrl != null && !videoUrl.isEmpty()) {
+                        episodes.add(chapterName + "$" + videoUrl);
+                        continue;
+                    }
+                    
+                    episodes.add(chapterName + "$" + vodId + "$" + chapterId + "$" + chapterName);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        
+        if (!episodes.isEmpty()) {
+            playUrls.add(TextUtils.join("#", episodes));
+        }
+        
+        return playUrls;
+    }
+
+    private String getDirectVideoUrl(JSONObject chapter) {
+        try {
+            if (!chapter.has("chapterVideoVo") || chapter.isNull("chapterVideoVo")) {
+                return null;
+            }
+            
+            JSONObject videoInfo = chapter.getJSONObject("chapterVideoVo");
+            String[] keys = {"mp4", "mp4720p", "vodMp4Url"};
+            for (String key : keys) {
+                if (videoInfo.has(key) && !videoInfo.isNull(key)) {
+                    String url = videoInfo.getString(key);
+                    if (url.toLowerCase().contains(".mp4")) {
+                        return url;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    @Override
+    public String playerContent(String flag, String id, List<String> vipFlags) throws Exception {
+        JSONObject result = new JSONObject();
+        result.put("parse", 0);
+        result.put("url", id);
+        result.put("header", new JSONObject(headers).toString());
+        
+        if (id.contains("http") && (id.contains(".mp4") || id.contains(".m3u8"))) {
+            return result.toString();
+        }
+        
+        String[] parts = id.split("\\$");
+        if (parts.length < 2) {
+            return result.toString();
+        }
+        
+        String dramaId = parts[0].replace("/drama/", "");
+        String chapterId = parts[1];
+        
+        String videoUrl = getEpisodeVideoUrl(dramaId, chapterId);
+        if (videoUrl != null && !videoUrl.isEmpty()) {
+            result.put("url", videoUrl);
+        }
+        
+        return result.toString();
+    }
+
+    private String getEpisodeVideoUrl(String dramaId, String chapterId) {
+        try {
+            String episodeUrl = siteUrl + "/episode/" + dramaId + "/" + chapterId;
+            String html = OkHttp.string(episodeUrl, headers);
+            
+            Pattern pattern = Pattern.compile("<script id=\"__NEXT_DATA__\".*?>(.*?)</script>", Pattern.DOTALL);
+            Matcher matcher = pattern.matcher(html);
+            if (matcher.find()) {
+                try {
+                    JSONObject nextData = new JSONObject(matcher.group(1));
+                    JSONObject pageProps = nextData.optJSONObject("props").optJSONObject("pageProps");
+                    JSONObject chapterInfo = pageProps.optJSONObject("chapterInfo");
+                    
+                    if (chapterInfo != null && chapterInfo.has("chapterVideoVo")) {
+                        JSONObject videoInfo = chapterInfo.getJSONObject("chapterVideoVo");
+                        String[] keys = {"mp4", "mp4720p", "vodMp4Url"};
+                        for (String key : keys) {
+                            if (videoInfo.has(key) && !videoInfo.isNull(key)) {
+                                String url = videoInfo.getString(key);
+                                if (url.toLowerCase().contains(".mp4")) {
+                                    return url;
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            
+            Pattern mp4Pattern = Pattern.compile("(https?://[^\"']+\\.mp4)");
+            Matcher mp4Matcher = mp4Pattern.matcher(html);
+            List<String> mp4Matches = new ArrayList<>();
+            while (mp4Matcher.find()) {
+                mp4Matches.add(mp4Matcher.group(1));
+            }
+            
+            if (!mp4Matches.isEmpty()) {
+                for (String url : mp4Matches) {
+                    if (url.contains(chapterId) || url.contains(dramaId)) {
+                        return url;
+                    }
+                }
+                return mp4Matches.get(0);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
+        return null;
+    }
+
+    @Override
+    public boolean manualVideoCheck() throws Exception {
+        return false;
+    }
+
+    @Override
+    public boolean isVideoFormat(String url) throws Exception {
+        String[] videoFormats = {".mp4", ".mkv", ".avi", ".wmv", ".m3u8", ".flv", ".rmvb"};
+        for (String format : videoFormats) {
+            if (url.toLowerCase().contains(format)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
     public void destroy() {
-        WebViewHelper.getInstance().destroyPool();
+        super.destroy();
     }
 }
