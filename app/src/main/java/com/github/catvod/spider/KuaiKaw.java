@@ -70,7 +70,7 @@ public class KuaiKaw extends Spider {
         return header;
     }
 
-    private String extractNextData(String html) {
+    private JSONObject extractNextData(String html) {
         if (html.contains("加入我们：hr@dianzhong.com")) {
             return null;
         }
