@@ -44,7 +44,8 @@ class OkRequest {
     private void buildRequest() {
         Request.Builder builder = new Request.Builder();
         if (method.equals(OkHttp.GET) && params != null) setParams();
-        if (method.equals(OkHttp.POST)) builder.post(getRequestBody());
+        if (method.equals(OkHttp.POST) || method.equals(OkHttp.PUT) || method.equals(OkHttp.PATCH)) builder.post(getRequestBody());
+        if (method.equals(OkHttp.DELETE)) builder.delete(getRequestBody());
         if (header != null) for (String key : header.keySet()) builder.addHeader(key, header.get(key));
         request = builder.url(url).build();
     }
