@@ -78,4 +78,119 @@ public abstract class Spider {
     public static OkHttpClient client() {
         return null;
     }
+
+    public String localProxy(String url) throws Exception {
+        return "";
+    }
+
+    public String download(String url, String path) throws Exception {
+        return "";
+    }
+
+    public String config() throws Exception {
+        return "";
+    }
+
+    public String cache(String key) throws Exception {
+        return "";
+    }
+
+    public void clearCache(String key) throws Exception {
+    }
+
+    public String playlist(String url) throws Exception {
+        return "";
+    }
+
+    public String seriesContent(String tid, String pg, boolean filter, HashMap<String, String> extend) throws Exception {
+        return "";
+    }
+
+    public String seasonContent(String tid, String pg, boolean filter, HashMap<String, String> extend) throws Exception {
+        return "";
+    }
+
+    public String episodeContent(String tid, String pg, boolean filter, HashMap<String, String> extend) throws Exception {
+        return "";
+    }
+
+    public String recommendContent() throws Exception {
+        return "";
+    }
+
+    public String hotContent() throws Exception {
+        return "";
+    }
+
+    public String rankContent() throws Exception {
+        return "";
+    }
+
+    public String collectContent(List<String> ids) throws Exception {
+        return "";
+    }
+
+    public String historyContent(List<String> ids) throws Exception {
+        return "";
+    }
+
+    public String favoriteContent(List<String> ids) throws Exception {
+        return "";
+    }
+
+    public String commentContent(String id, String pg) throws Exception {
+        return "";
+    }
+
+    public String danmakuContent(String id) throws Exception {
+        return "";
+    }
+
+    public String subtitleContent(String id) throws Exception {
+        return "";
+    }
+
+    public String imageContent(String url) throws Exception {
+        return "";
+    }
+
+    public String musicContent(String id) throws Exception {
+        return "";
+    }
+
+    public String bookContent(String id) throws Exception {
+        return "";
+    }
+
+    public String liveChannelContent(String url) throws Exception {
+        return "";
+    }
+
+    public String liveProgramContent(String url) throws Exception {
+        return "";
+    }
+
+    public String liveEpgContent(String url) throws Exception {
+        return "";
+    }
+
+    public String liveSearchContent(String key, boolean quick) throws Exception {
+        return "";
+    }
+
+    public String liveSearchContent(String key, boolean quick, String pg) throws Exception {
+        return "";
+    }
+
+    public String livePlayerContent(String flag, String id, List<String> vipFlags) throws Exception {
+        return "";
+    }
+
+    public String liveRecordContent(String url) throws Exception {
+        return "";
+    }
+
+    public String liveCatchupContent(String url) throws Exception {
+        return "";
+    }
 }
