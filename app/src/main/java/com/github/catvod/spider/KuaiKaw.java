@@ -300,7 +300,7 @@ public class KuaiKaw extends Spider {
                 performers.add(performerList.getJSONObject(i).optString("name", ""));
             }
         }
-        vod.setVodActor(TextUtils.join(performers, ", "));
+        vod.setVodActor(TextUtils.join(", ", performers));
         
         List<String> playUrls = processEpisodes(vodId, chapterList);
         if (!playUrls.isEmpty()) {
