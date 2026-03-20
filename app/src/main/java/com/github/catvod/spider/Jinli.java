@@ -143,17 +143,16 @@ public class Jinli extends Spider {
     public String playerContent(String flag, String id, List<String> vipFlags) {
         try {
             String playUrl = id + "&auto=1";
-            // OkHttp.string 直接返回字符串，适配 playerContent 逻辑
             String html = OkHttp.string(playUrl, headerx);
             
             Pattern pattern = Pattern.compile("\"url\":\"(.*?)\"");
             Matcher matcher = pattern.matcher(html);
             if (matcher.find()) {
                 String realUrl = matcher.group(1).replace("\\/", "/");
-                return Result.get().url(realUrl).header(headerx).parse(0).string();
+                return Result.get().url(realUrl).header(headerx).string();
             }
             
-            return Result.get().url(id).header(headerx).parse(0).string();
+            return Result.get().url(id).header(headerx).string();
         } catch (Exception e) {
             return Result.get().string();
         }
