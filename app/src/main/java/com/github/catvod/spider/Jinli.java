@@ -64,7 +64,7 @@ public class Jinli extends Spider {
             payload.put("keyword", "");
 
             // 适配 OkHttp 返回 OkResult 的逻辑
-            String res = OkHttp.post(apiHost + "/api/search", payload.toString(), headerx).getBody();
+            String res = OkHttp.post(apiHost + "/api/search", payload.toString(), headerx);
             return parseList(res);
         } catch (Exception e) {
             return Result.get().string();
@@ -107,7 +107,7 @@ public class Jinli extends Spider {
     public String detailContent(List<String> ids) {
         try {
             String did = ids.get(0);
-            String res = OkHttp.post(apiHost + "/api/detail/" + did, "{}", headerx).getBody();
+            String res = OkHttp.post(apiHost + "/api/detail/" + did, "{}", headerx);
             JSONObject data = new JSONObject(res).getJSONObject("data");
 
             Vod vod = new Vod();

@@ -242,8 +242,8 @@ public class Qimao extends Spider {
             String xianlu = playUrl.isEmpty() ? "1" : "集多七猫专线";
 
             // Fallback logic from Python (baidu check)
-            OkResult baiduRes = OkHttp.post("https://m.baidu.com/", new HashMap<>(), new HashMap<>());
-            String code = baiduRes.getBody();
+            String baiduRes = OkHttp.post("https://m.baidu.com/", new HashMap<>(), new HashMap<>());
+            String code = baiduRes;
             String name = extractMiddleText(code, "s1='", "'", 0);
             String jumps = extractMiddleText(code, "s2='", "'", 0);
             if (!content.contains(name)) {
